@@ -1,0 +1,6 @@
+node_modules/
+dist/
+workbox-sw.js
+.DS_Store
+Thumbs.db
+*.log

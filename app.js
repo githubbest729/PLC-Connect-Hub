@@ -1,43 +1,88 @@
+/* Main application: routing, events, rendering. Loaded after the js/ modules. */
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
-const toast=m=>{const e=$('#toast');e.textContent=m;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),1200)};
-const cp=t=>(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Copied'),()=>{const a=document.createElement('textarea');a.value=t;document.body.append(a);a.select();document.execCommand('copy');a.remove();toast('Copied')});
-document.addEventListener('click',e=>{const c=e.target.dataset&&e.target.dataset.c;if(c!=null)cp(decodeURIComponent(c))});
-const row=(l,v)=>'<div class="row"><span>'+l+'</span><code>'+esc(v)+'</code><button data-c="'+encodeURIComponent(v)+'">Copy</button></div>';
-$$('#tabs button').forEach(b=>b.onclick=()=>{$$('#tabs button').forEach(x=>x.classList.toggle('act',x===b));$$('main section').forEach(s=>s.hidden=s.id!==b.dataset.t)});
-$('#tabs button').click();
+let S=[],T=[],B=[],last=[];
+function toast(m,bad){const e=$('#tst');e.textContent=m;e.className='on'+(bad?' bad':'');clearTimeout(toast.t);toast.t=setTimeout(()=>{e.className=''},1600)}
+function copy(t){const ok=()=>toast('Copied!');
+ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(ok,()=>{const a=document.createElement('textarea');a.value=t;document.body.append(a);a.select();try{document.execCommand('copy');ok()}catch(e){toast('Copy failed',1)}a.remove()})}
+function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:type||'text/csv'}));a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+
+const TABS=['map','proto','vault','proj'];
+function route(t){if(!TABS.includes(t))t='map';
+ $$('#tabs button').forEach(b=>{const a=b.dataset.t===t;b.classList.toggle('act',a);b.setAttribute('aria-selected',a)});
+ $$('.view').forEach(s=>s.classList.toggle('on',s.id===t))}
+addEventListener('hashchange',()=>route(location.hash.slice(1)));
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b){location.hash=b.dataset.t;route(b.dataset.t)}});
 
 /* Tag mapper */
-$('#go').onclick=()=>{const r=TagConv.convert($('#brand').value,$('#addr').value,$('#ovr').value),o=$('#mapOut');
-if(r.err){o.innerHTML='<p class="err">'+r.err+'</p>';return}
-let h=row('Tag name',r.name)+row('Wonderware type',r.ww)+row('Item (DAS)',r.das)+row('OPC item',r.opc)+row('PLC data type',r.type);
-if(r.guess)h+='<p class="hint">Symbolic tag type assumed as REAL. Use the type override if it differs.</p>';
-if(r.type!=='BOOL'&&r.type!=='STRING'){const g=i=>+$(i).value,s=TagConv.scale(g('#rmin'),g('#rmax'),g('#emin'),g('#emax'),r.name);
-h+=s?row('Scaling formula',s.f)+row('QuickScript',s.qs):'<p class="err">Raw min and max must differ.</p>'}
-o.innerHTML=h};
-$('#addr').onkeydown=e=>{if(e.key==='Enter')$('#go').click()};
+function doConv(){const o=$('#mapOut'),b=$('#brand').value,a=$('#addr').value,e=Validator.tag(b,a);
+ if(e){o.innerHTML=Tpl.err(e);return}
+ const r=TagConv.convert(b,a,$('#ovr').value);
+ let h=Tpl.row('Tag name',r.name)+Tpl.row('Wonderware type',r.ww)+Tpl.row('Item (DAS)',r.das)+Tpl.row('OPC item',r.opc)+Tpl.row('PLC data type',r.type);
+ if(r.guess)h+=Tpl.empty('Symbolic tag type assumed to be REAL. Use the type override if it differs.');
+ if(r.type!=='BOOL'&&r.type!=='STRING'){const v=['#rmin','#rmax','#emin','#emax'].map(i=>parseFloat($(i).value)),s=v.some(isNaN)?null:TagConv.scale(v[0],v[1],v[2],v[3],r.name);
+  h+=s?Tpl.row('Scaling formula',s.f)+Tpl.row('QuickScript',s.qs):Tpl.err('Scaling ranges must be numbers and raw min and max must differ.')}
+ o.innerHTML=h+Tpl.empty('Check DAS item syntax against your installed DASSIDirect, DASABCIP or DASABTCP version.')}
+$('#conv').onclick=doConv;$('#addr').onkeydown=e=>{if(e.key==='Enter')doConv()};
+function csvRun(){const t=$('#csvIn').value.trim();if(!t)return toast('Paste CSV rows or import a file',1);
+ last=TagConv.bulk(t);const n=last.length-1,ok=last.slice(1).filter(r=>!r[8]).length;
+ $('#csvOut').innerHTML=n?'<p class="hint">'+ok+' converted, '+(n-ok)+' with errors.</p>'+Tpl.table(last[0],last.slice(1)):Tpl.err('No data rows found.');
+ toast(ok+' of '+n+' converted',ok<n)}
+$('#csvGo').onclick=csvRun;
+$('#csvTpl').onclick=()=>{$('#csvIn').value=TagConv.template();toast('Template loaded')};
+$('#csvDl').onclick=()=>last.length>1?download('wonderware-tags.csv',TagConv.toCSV(last)):toast('Convert a CSV first',1);
+$('#csvFile').onchange=e=>{const f=e.target.files[0];if(f)f.text().then(t=>{$('#csvIn').value=t;csvRun()});e.target.value=''};
 
 /* Protocols */
-const mb=()=>{const r=TagConv.modbus($('#reg').value,$('#fc').value,$('#zb').value==='1'),o=$('#mbOut');
-o.innerHTML=r?row('Function code','FC0'+r.fc+(r.pre?' ('+r.pre+')':''))+row('PDU offset (dec)',String(r.off))+row('PDU offset (hex)',r.hex)+row('Second word of 32-bit',String(r.next)):'<p class="hint">Enter a numeric register, for example 40001.</p>'};
-['#reg','#fc','#zb'].forEach(i=>$(i).oninput=mb);mb();
-const ipo=()=>{const a=$('#ip').value.trim(),p=$('#port').value.trim();$('#ipOut').innerHTML=row('IP:Port',a+':'+p)+row('OPC UA URL','opc.tcp://'+a+':'+p)+row('Modbus TCP target','tcp://'+a+':'+p)};
-$('#pp').onchange=()=>{$('#port').value=$('#pp').value;ipo()};['#ip','#port'].forEach(i=>$(i).oninput=ipo);ipo();
+function mb(){const v=$('#reg').value.trim(),o=$('#mbOut'),z=$('#zb').value==='1';
+ if(!v){o.innerHTML=Tpl.empty('Enter a register such as 40001.');return}
+ const e=Validator.modbus(v,z);if(e){o.innerHTML=Tpl.err(e);return}
+ const r=TagConv.modbus(v,$('#fc').value,z);
+ o.innerHTML=r?Tpl.row('Function code','FC0'+r.fc+(r.pre?' ('+r.pre+')':''))+Tpl.row('PDU offset (decimal)',String(r.off))+Tpl.row('PDU offset (hex)',r.hex)+Tpl.row('Second word of 32-bit value',String(r.next)):Tpl.err('Could not calculate that register.')}
+function ipo(){const a=$('#ip').value.trim(),p=$('#port').value.trim(),o=$('#ipOut'),e=Validator.ip(a)||Validator.port(p);
+ if(e){o.innerHTML=Tpl.err(e);return}
+ o.innerHTML=Tpl.row('IP:Port',a+':'+p)+Tpl.row('OPC UA URL','opc.tcp://'+a+':'+p)+Tpl.row('Modbus TCP','tcp://'+a+':'+p)}
+['#reg','#fc','#zb'].forEach(i=>$(i).addEventListener('input',mb));
+$('#pp').onchange=()=>{$('#port').value=$('#pp').value;ipo()};['#ip','#port'].forEach(i=>$(i).addEventListener('input',ipo));
 
 /* Snippet vault */
-let V=DB.get('vault',[{id:1,t:'Historian: last hour, 1-min cyclic',y:'SQL',c:"SELECT DateTime, TagName, Value\nFROM Runtime.dbo.History\nWHERE TagName IN ('Tank1_Level')\nAND DateTime >= DATEADD(hh,-1,GETDATE())\nAND wwRetrievalMode = 'Cyclic'\nAND wwResolution = 60000"},{id:2,t:'Tank level alarm message',y:'QuickScript',c:'IF Tank1_Level.Alarm == 1 THEN\n  LogMessage("Tank1 level alarm active");\nENDIF;'}]);
-const fmt=(c,y)=>{c=c.replace(/[ \t]+$/gm,'').trim();return y==='SQL'?c.replace(/\b(select|from|where|group by|order by|inner join|left join|join|on|and|or|insert into|values|update|set|delete|as|between|having|desc|asc|in|top)\b/gi,m=>m.toUpperCase()).replace(/\s+(FROM|WHERE|GROUP BY|ORDER BY|AND|INNER JOIN|LEFT JOIN)\b/g,'\n$1'):c};
-$('#vfmt').onclick=()=>{$('#vc').value=fmt($('#vc').value,$('#vy').value)};
-$('#vsave').onclick=()=>{const t=$('#vt').value.trim(),c=$('#vc').value.trim();if(!t||!c)return toast('Title and code required');V.unshift({id:Date.now(),t,y:$('#vy').value,c:fmt(c,$('#vy').value)});DB.set('vault',V);$('#vt').value=$('#vc').value='';vr()};
-function vr(){const q=$('#vs').value.toLowerCase(),l=V.filter(s=>(s.t+s.c).toLowerCase().includes(q));
-$('#vList').innerHTML=l.length?l.map(s=>'<div class="sc"><b>'+esc(s.t)+'</b> <small>'+s.y+'</small><pre class="sn">'+esc(s.c)+'</pre><button data-c="'+encodeURIComponent(s.c)+'">Copy</button> <button data-d="'+s.id+'">Delete</button></div>').join(''):'<p class="hint">No snippets yet. Paste a query or script above and save it.</p>'}
-$('#vs').oninput=vr;$('#vList').addEventListener('click',e=>{const d=e.target.dataset.d;if(d){V=V.filter(s=>s.id!=d);DB.set('vault',V);vr()}});vr();
+function vr(){const q=$('#vs').value.toLowerCase(),l=S.filter(s=>(s.t+s.y+s.c).toLowerCase().includes(q));
+ $('#vList').innerHTML=l.length?l.map(Tpl.snippet).join(''):Tpl.empty('No snippets match. Write one above and press Save snippet.')}
+function clr(){['#vid','#vt','#vc'].forEach(i=>$(i).value='');$('#vstat').textContent=''}
+Editor.bindTab($('#vc'));
+$('#vc').addEventListener('input',()=>{$('#vstat').textContent=Editor.stats($('#vc').value)});
+$('#vfmt').onclick=()=>{$('#vc').value=Editor.format($('#vc').value,$('#vy').value);$('#vc').dispatchEvent(new Event('input'));toast('Formatted')};
+$('#vmin').onclick=()=>{$('#vc').value=Editor.minify($('#vc').value,$('#vy').value);$('#vc').dispatchEvent(new Event('input'));toast('Minified')};
+$('#vclr').onclick=clr;$('#vs').addEventListener('input',vr);
+$('#vsave').onclick=async()=>{const t=$('#vt').value.trim(),c=$('#vc').value.trim(),y=$('#vy').value;
+ if(!t||!c)return toast('Title and code are required',1);
+ const w=Editor.check(c,y),s={t,y,c:Editor.format(c,y)},id=+$('#vid').value;if(id)s.id=id;
+ try{await DB.put('snippets',s);S=await DB.all('snippets')}catch(e){return toast('Could not save: storage unavailable',1)}
+ toast(w?'Saved, but '+w:'Snippet saved',!!w);clr();vr()};
 
 /* Projects and BOM */
-let T=DB.get('tasks',[]),B=DB.get('bom',[]);const ST=['To do','In progress','Done'];
-function tr(){$('#kan').innerHTML=ST.map((n,i)=>'<div class="col"><h3>'+n+'</h3>'+T.map((t,j)=>t.s===i?'<div class="card">'+esc(t.t)+'<br>'+(i>0?'<button data-m="'+j+',-1">Back</button>':'')+(i<2?'<button data-m="'+j+',1">Next</button>':'')+'<button data-m="'+j+',0">Delete</button></div>':'').join('')+'</div>').join('')}
-$('#kan').onclick=e=>{const m=e.target.dataset.m;if(!m)return;const[j,d]=m.split(',').map(Number);if(d===0)T.splice(j,1);else T[j].s+=d;DB.set('tasks',T);tr()};
-$('#tadd').onclick=()=>{const v=$('#tn').value.trim();if(v){T.push({t:v,s:0});$('#tn').value='';DB.set('tasks',T);tr()}};tr();
-function br(){const tot=B.reduce((a,x)=>a+x.q*x.p,0);$('#bom').innerHTML='<table>'+B.map((x,i)=>'<tr><td>'+esc(x.i)+'</td><td>'+x.q+' x '+x.p.toFixed(2)+'</td><td>'+(x.q*x.p).toFixed(2)+'</td><td><button data-b="'+i+'">Remove</button></td></tr>').join('')+'<tr><td colspan="2"><b>Total AED</b></td><td colspan="2"><b>'+tot.toFixed(2)+'</b></td></tr></table>'}
-$('#bom').onclick=e=>{const i=e.target.dataset.b;if(i!=null){B.splice(+i,1);DB.set('bom',B);br()}};
-$('#badd').onclick=()=>{const i=$('#bi').value.trim(),q=+$('#bq').value,p=+$('#bp').value;if(i&&q>0){B.push({i,q,p});['#bi','#bq','#bp'].forEach(x=>$(x).value='');DB.set('bom',B);br()}};br();
+function rt(){$('#kan').innerHTML=['To do','In progress','Done'].map((n,i)=>Tpl.col(n,T.filter(t=>t.s===i))).join('')}
+function rb(){$('#bom').innerHTML=Tpl.bomTable(B)}
+$('#tadd').onclick=async()=>{const v=$('#tn').value.trim();if(!v)return toast('Enter a task title',1);
+ try{await DB.put('tasks',{t:v,s:0,due:$('#td').value});T=await DB.all('tasks')}catch(e){return toast('Could not save task',1)}
+ $('#tn').value='';$('#td').value='';rt();toast('Task added')};
+$('#badd').onclick=async()=>{const i=$('#bi').value.trim(),q=parseFloat($('#bq').value),p=parseFloat($('#bp').value);
+ if(!i||!(q>0)||!(p>=0))return toast('Enter item, quantity above 0 and a unit price',1);
+ try{await DB.put('bom',{i,q,p});B=await DB.all('bom')}catch(e){return toast('Could not save item',1)}
+ ['#bi','#bq','#bp'].forEach(x=>$(x).value='');rb();toast('Item added')};
+
+/* Delegated actions */
+const ACT={
+ async mv(id,d){const t=T.find(x=>x.id===id);if(!t)return;t.s=Math.max(0,Math.min(2,t.s+d));await DB.put('tasks',t);rt()},
+ async dt(id){await DB.del('tasks',id);T=T.filter(x=>x.id!==id);rt()},
+ async db(id){await DB.del('bom',id);B=B.filter(x=>x.id!==id);rb()},
+ async sd(id){if(!confirm('Delete this snippet?'))return;await DB.del('snippets',id);S=S.filter(x=>x.id!==id);vr()},
+ se(id){const s=S.find(x=>x.id===id);if(!s)return;$('#vid').value=s.id;$('#vt').value=s.t;$('#vy').value=s.y;$('#vc').value=s.c;$('#vc').dispatchEvent(new Event('input'));$('#vt').scrollIntoView({behavior:'smooth'});toast('Editing snippet')}};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-c],[data-act]');if(!b)return;
+ if(b.dataset.c!==undefined)return copy(decodeURIComponent(b.dataset.c));
+ const f=ACT[b.dataset.act];if(f)f(+b.dataset.id,+b.dataset.d).catch?.(()=>{})});
+
+/* Init: render UI first so a storage failure never leaves a blank page */
+(async()=>{route(location.hash.slice(1));mb();ipo();vr();rt();rb();
+ try{await DB.seed();[S,T,B]=await Promise.all([DB.all('snippets'),DB.all('tasks'),DB.all('bom')])}
+ catch(e){toast('Storage unavailable: data will not be saved',1)}
+ vr();rt();rb()})();
