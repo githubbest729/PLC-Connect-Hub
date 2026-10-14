@@ -5,6 +5,7 @@ Offline-capable PWA for SCADA and PLC integration work.
 - **Protocols**: Modbus register calculator and IP:port quick-copy.
 - **Snippets**: SQL and QuickScript vault stored in IndexedDB.
 - **Projects**: Kanban board and AED BOM with 5% VAT.
+- **Tour**: first-run guided tour. Replay it with the Help button; clear localStorage key `plch_tour` to reset.
 
 ## Run locally
 `npm start` (or any static server). Service workers need http://localhost or HTTPS.

@@ -2,7 +2,7 @@
 
 ## Overview
 Static PWA, no build step. All scripts are classic scripts that share globals, loaded in this order by `index.html`:
-`js/db.js` > `js/tag-converter.js` > `js/validator.js` > `js/editor.js` > `js/templates.js` > `app.js` > `sw-register.js`.
+`js/db.js` > `js/tag-converter.js` > `js/validator.js` > `js/editor.js` > `js/templates.js` > `app.js` > `js/tour.js` > `sw-register.js`.
 
 ## Modules
 | File | Global | Role |
@@ -13,6 +13,7 @@ Static PWA, no build step. All scripts are classic scripts that share globals, l
 | js/editor.js | Editor | SQL and QuickScript format, minify, checks |
 | js/templates.js | Tpl | HTML string templates |
 | app.js | - | Hash routing, events, rendering, init |
+| js/tour.js | Tour | First-time product tour (spotlight and tooltips); remembers completion in localStorage key `plch_tour` |
 
 ## Offline
 `service-worker.js` precaches the app shell and the Tailwind CDN script (cache-first, offline.html fallback). Bump `V` on every release.
