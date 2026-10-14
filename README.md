@@ -23,7 +23,7 @@ graph TD;
 
 ```
 
-*(GitHub natively renders the diagram above. If viewing locally, it represents the offline-first data flow of the application).*
+
 
 ---
 
