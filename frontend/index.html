@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" class="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PLC-Connect Hub</title><meta name="theme-color" content="#0c1117"><meta name="description" content="Offline PLC and SCADA tag mapping toolkit">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/favicon.ico.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png.svg">
+<script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="style.css"></head>
+<body class="bg-slate-950 text-slate-200">
+<header class="flex items-center justify-between px-4 py-3"><h1 class="text-xl font-bold">PLC-Connect <span style="color:#f2a900">Hub</span></h1><div class="flex items-center gap-3"><span id="net" class="text-xs"></span><button id="helpBtn" class="help" aria-label="Replay the product tour" title="Replay tour">? Help</button></div></header>
+<nav id="tabs" role="tablist"><button data-t="map" role="tab">Tag Mapper</button><button data-t="proto" role="tab">Protocols</button><button data-t="vault" role="tab">Snippets</button><button data-t="proj" role="tab">Projects</button><button data-t="live" role="tab">Live Data</button></nav>
+<main>
+<section id="map" class="view">
+<details class="how" open><summary>How to use</summary><ol><li>Choose the PLC brand and type an address such as DB1.DBD4, M10.0, N7:0 or Motor1.Speed.</li><li>For analog values, set the raw and engineering ranges (Siemens analog default is 0 to 27648).</li><li>Press Convert, then press Copy beside any result.</li><li>For many tags use Bulk CSV below: import a file or paste rows, convert, then export the result.</li></ol></details>
+<div class="fg">
+<label>PLC brand<select id="brand"><option value="s7">Siemens S7 (TIA Portal)</option><option value="ab">Allen-Bradley</option><option value="omron">Omron (FINS)</option><option value="mitsubishi">Mitsubishi (MELSEC)</option><option value="ge">GE Fanuc (SRTP, iFIX)</option></select></label>
+<label>PLC address or tag<input id="addr" value="DB1.DBD4" autocapitalize="off" spellcheck="false"></label>
+<label>Type override (DBD, MD, symbolic)<select id="ovr"><option value="">Auto</option><option>REAL</option><option>DINT</option><option>INT</option></select></label>
+<label>Raw min / max<span class="two"><input id="rmin" type="number" value="0"><input id="rmax" type="number" value="27648"></span></label>
+<label>Engineering min / max<span class="two"><input id="emin" type="number" value="0"><input id="emax" type="number" value="100"></span></label>
+<div class="end"><button class="pri full" id="conv">Convert</button></div></div>
+<div id="mapOut"></div>
+<h2>Bulk CSV</h2>
+<details class="how"><summary>How to use</summary><p>Columns: brand (s7 or ab), address, type (optional), rawMin, rawMax, engMin, engMax. Empty range cells use 0, 27648, 0, 100. Press Template to see an example.</p></details>
+<textarea id="csvIn" rows="5" placeholder="brand,address,type,rawMin,rawMax,engMin,engMax" spellcheck="false"></textarea>
+<div class="bar"><label class="btn">Import CSV file<input type="file" id="csvFile" accept=".csv,text/csv" hidden></label><button id="csvTpl">Template</button><button class="pri" id="csvGo">Convert CSV</button><button id="csvDl">Export result</button></div>
+<div id="csvOut"></div>
+</section>
+
+<section id="proto" class="view">
+<h2>Modbus register calculator</h2>
+<details class="how"><summary>How to use</summary><p>Enter a register like 40001 (holding), 30001 (input register), 00001 (coil) or 10001 (discrete input). Five- and six-digit numbers are read as prefix plus address. For a plain number choose the function code and numbering. The PDU offset is what goes on the wire.</p></details>
+<div class="fg"><label>Register<input id="reg" value="40001" inputmode="numeric"></label>
+<label>If no prefix<select id="fc"><option value="3">Holding (FC03)</option><option value="4">Input register (FC04)</option><option value="1">Coil (FC01)</option><option value="2">Discrete input (FC02)</option></select></label>
+<label>Numbering<select id="zb"><option value="0">1-based (as in docs)</option><option value="1">0-based (already offset)</option></select></label></div>
+<div id="mbOut"></div>
+<h2>Connection quick-copy</h2>
+<div class="fg"><label>IP address<input id="ip" value="192.168.1.10"></label>
+<label>Protocol<select id="pp"><option value="502">Modbus TCP 502</option><option value="4840">OPC UA 4840</option><option value="102">S7 (ISO-on-TCP) 102</option><option value="44818">EtherNet/IP 44818</option></select></label>
+<label>Port<input id="port" value="502" inputmode="numeric"></label></div>
+<div id="ipOut"></div>
+</section>
+
+<section id="vault" class="view">
+<details class="how"><summary>How to use</summary><p>Write or paste a SQL query or QuickScript, then press Format to tidy it or Minify to compact it. Save snippet stores it on this device. Use Edit to reload a snippet and Copy to put it on the clipboard. Tab inserts two spaces.</p></details>
+<input type="hidden" id="vid">
+<div class="fg"><label>Title<input id="vt"></label><label>Type<select id="vy"><option>SQL</option><option>QuickScript</option></select></label><label>Search<input id="vs" placeholder="Filter snippets"></label></div>
+<label>Code<textarea id="vc" rows="8" spellcheck="false"></textarea></label><small id="vstat" class="hint"></small>
+<div class="bar"><button class="pri" id="vsave">Save snippet</button><button id="vfmt">Format</button><button id="vmin">Minify</button><button id="vclr">Clear</button></div>
+<div id="vList"></div>
+</section>
+
+<section id="proj" class="view">
+<details class="how"><summary>How to use</summary><p>Add a task, then move it with Back and Next between To do, In progress and Done. Add BOM lines from site surveys with quantity and unit price in AED; subtotal, 5% VAT and total update automatically.</p></details>
+<div class="bar"><input id="tn" placeholder="New task"><input id="td" type="date" style="max-width:11rem"><button class="pri" id="tadd">Add task</button></div>
+<div id="kan" class="kan"></div>
+<h2>BOM estimate (AED)</h2>
+<div class="bar"><input id="bi" placeholder="Item"><input id="bq" type="number" min="1" placeholder="Qty" style="max-width:6rem"><input id="bp" type="number" min="0" placeholder="Unit AED" style="max-width:9rem"><button class="pri" id="badd">Add item</button></div>
+<div id="bom"></div>
+</section>
+<section id="live" class="view">
+<details class="how"><summary>How to use</summary><ol><li>Start the companion server on your PC: open the backend folder, run npm install, then npm start (npm run mock tests without hardware).</li><li>Enter the backend URL (default http://localhost:3000), choose the protocol, then the PLC IP and tag address.</li><li>Press Connect &amp; Read. The value streams in at the poll interval. Press Disconnect to stop.</li><li>Rack is for Siemens S7. Slot / Unit ID is the S7 slot, Allen-Bradley slot or Modbus unit ID. Reads only: nothing is ever written to a PLC.</li></ol></details>
+<div class="fg">
+<label>Backend URL<input id="lurl" value="http://localhost:3000" autocapitalize="off" spellcheck="false"></label>
+<label>Protocol<select id="lproto"><option value="modbus">Modbus TCP</option><option value="s7">Siemens S7 (snap7)</option><option value="ab">Allen-Bradley (EtherNet/IP)</option><option value="omron">Omron FINS/UDP</option><option value="mitsubishi">Mitsubishi MC protocol 3E</option><option value="ge">GE SRTP (mock only)</option></select></label>
+<label>PLC IP address<input id="lip" value="192.168.1.10"></label>
+<label>Port (optional)<input id="lport" inputmode="numeric" placeholder="502"></label>
+<label>Tag address<input id="laddr" value="40001" autocapitalize="off" spellcheck="false"></label>
+<label>Data type<select id="ltype"><option value="">Auto</option><option>BOOL</option><option>INT</option><option>UINT</option><option>DINT</option><option>UDINT</option><option>REAL</option></select></label>
+<label>Rack (S7)<input id="lrack" type="number" min="0" max="15" placeholder="0"></label>
+<label>Slot / Unit ID<input id="lslot" type="number" min="0" max="247" placeholder="1"></label>
+<label>Poll interval (ms)<input id="lint" type="number" min="250" max="60000" value="1000"></label>
+<label>32-bit word order (Modbus)<select id="lswap"><option value="">Normal</option><option value="1">Swapped</option></select></label></div>
+<div class="bar"><button class="pri" id="lgo">Connect &amp; Read</button><button id="lstop">Disconnect</button></div>
+<div id="lstat" class="hint" role="status">Not connected.</div>
+<div class="sc"><div id="lval" class="big">--</div><small id="lmeta" class="hint">No data yet</small></div>
+<div id="llog" class="hint"></div>
+</section>
+</main><div id="tst" role="status" aria-live="polite"></div>
+<div id="tour" hidden><div id="tshade"></div><div id="tspot"></div>
+<div id="ttip" role="dialog" aria-modal="true" aria-labelledby="tt" aria-describedby="tb"><h3 id="tt"></h3><p id="tb"></p>
+<div class="tf"><small id="tc"></small><div><button id="tskip">Skip tour</button><button id="tprev">Previous</button><button id="tnext" class="pri">Next</button></div></div></div></div>
+<script src="js/db.js"></script><script src="js/tag-converter.js"></script><script src="js/validator.js"></script><script src="js/editor.js"></script><script src="js/templates.js"></script><script src="app.js"></script><script src="js/live-client.js"></script><script src="js/tour.js"></script><script src="sw-register.js"></script>
+</body></html>
