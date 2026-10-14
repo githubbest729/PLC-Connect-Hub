@@ -1,0 +1,1 @@
+const DB={get(k,d){try{return JSON.parse(localStorage.getItem('plch:'+k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem('plch:'+k,JSON.stringify(v))}catch(e){}}};
