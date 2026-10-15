@@ -1,7 +1,0 @@
-/* TEAM */
-Role: SCADA / Controls Engineering
-Site: PLC-Connect Hub
-
-/* SITE */
-Standards: HTML5, CSS3, Vanilla JS, Tailwind CSS (CDN)
-Features: PWA, IndexedDB, offline cache
