@@ -7,6 +7,7 @@ cd backend
 npm install
 npm start          # live mode
 npm run mock       # simulated values, no PLC traffic
+npm test           # smoke test of the server in mock mode
 ```
 Open http://localhost:3000. The server also serves `../frontend`, so the PWA and Live Data tab work from the same origin.
 

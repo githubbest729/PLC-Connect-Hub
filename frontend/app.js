@@ -23,6 +23,7 @@ function doConv(){const o=$('#mapOut'),b=$('#brand').value,a=$('#addr').value,e=
   h+=s?Tpl.row('Scaling formula',s.f)+Tpl.row('QuickScript',s.qs):Tpl.err('Scaling ranges must be numbers and raw min and max must differ.')}
  if(r.ifix){const i=r.ifix,g=['#rmin','#rmax','#emin','#emax'].map(x=>parseFloat($(x).value));
   h+='<h2>GE iFIX database</h2>'+Tpl.row('iFIX block type',i.block)+Tpl.row('iFIX tag name',i.tag)+Tpl.row('iFIX I/O address',i.addr)+Tpl.row('iFIX reference',i.ref)+(i.block==='AI'&&!g.some(isNaN)?Tpl.row('iFIX scaling','LIN: Raw '+g[0]+'..'+g[1]+' -> EGU '+g[2]+'..'+g[3]):'')+Tpl.empty('Driver name and field labels vary by iFIX version. Confirm in iFIX Database Manager.')}
+ h+='<p style="margin:.6rem 0"><button class="pri" data-act="live" data-pr="'+b+'" data-a="'+Tpl.esc(b==='s7'?r.opc:r.das)+'" data-t="'+r.type+'">Send to Live Data</button></p>';
  o.innerHTML=h+Tpl.empty('Check item syntax against your installed DAS or OPC server (DASSIDirect, DASABCIP, DASABTCP, Omron, Mitsubishi or GE).')}
 $('#conv').onclick=doConv;$('#brand').onchange=()=>{$('#addr').value=TagConv.EX[$('#brand').value]||'';doConv()};$('#addr').onkeydown=e=>{if(e.key==='Enter')doConv()};
 function csvRun(){const t=$('#csvIn').value.trim();if(!t)return toast('Paste CSV rows or import a file',1);
@@ -78,10 +79,12 @@ const ACT={
  async dt(id){await DB.del('tasks',id);T=T.filter(x=>x.id!==id);rt()},
  async db(id){await DB.del('bom',id);B=B.filter(x=>x.id!==id);rb()},
  async sd(id){if(!confirm('Delete this snippet?'))return;await DB.del('snippets',id);S=S.filter(x=>x.id!==id);vr()},
+ live(id,d,b){const p=b.dataset.pr,t=b.dataset.t;$('#lproto').value=p;$('#laddr').value=b.dataset.a;$('#ltype').value=['BOOL','INT','DINT','REAL'].includes(t)?t:'';$('#lport').placeholder=Live.EX[p][1];location.hash='live';route('live');toast('Sent to Live Data. Press Connect & Read.')},
+ lrm(id){Live.remove('f'+id)},
  se(id){const s=S.find(x=>x.id===id);if(!s)return;$('#vid').value=s.id;$('#vt').value=s.t;$('#vy').value=s.y;$('#vc').value=s.c;$('#vc').dispatchEvent(new Event('input'));$('#vt').scrollIntoView({behavior:'smooth'});toast('Editing snippet')}};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-c],[data-act]');if(!b)return;
  if(b.dataset.c!==undefined)return copy(decodeURIComponent(b.dataset.c));
- const f=ACT[b.dataset.act];if(f)f(+b.dataset.id,+b.dataset.d).catch?.(()=>{})});
+ const f=ACT[b.dataset.act];if(f)Promise.resolve(f(+b.dataset.id,+b.dataset.d,b)).catch(()=>{})});
 
 /* Init: render UI first so a storage failure never leaves a blank page */
 (async()=>{route(location.hash.slice(1));mb();ipo();vr();rt();rb();

@@ -56,7 +56,7 @@
 <div id="bom"></div>
 </section>
 <section id="live" class="view">
-<details class="how"><summary>How to use</summary><ol><li>Start the companion server on your PC: open the backend folder, run npm install, then npm start (npm run mock tests without hardware).</li><li>Enter the backend URL (default http://localhost:3000), choose the protocol, then the PLC IP and tag address.</li><li>Press Connect &amp; Read. The value streams in at the poll interval. Press Disconnect to stop.</li><li>Rack is for Siemens S7. Slot / Unit ID is the S7 slot, Allen-Bradley slot or Modbus unit ID. Reads only: nothing is ever written to a PLC.</li></ol></details>
+<details class="how"><summary>How to use</summary><ol><li>Start the companion server on your PC: open the backend folder, run npm install, then npm start (npm run mock tests without hardware).</li><li>Enter the backend URL (default http://localhost:3000), choose the protocol, then the PLC IP and tag address.</li><li>Press Connect &amp; Read to add the tag to the watchlist below. Add more tags the same way. Values stream at the poll interval. Remove a tag, or press Disconnect all, to stop.</li><li>Rack is for Siemens S7. Slot / Unit ID is the S7 slot, Allen-Bradley slot or Modbus unit ID. Reads only: nothing is ever written to a PLC.</li></ol></details>
 <div class="fg">
 <label>Backend URL<input id="lurl" value="http://localhost:3000" autocapitalize="off" spellcheck="false"></label>
 <label>Protocol<select id="lproto"><option value="modbus">Modbus TCP</option><option value="s7">Siemens S7 (snap7)</option><option value="ab">Allen-Bradley (EtherNet/IP)</option><option value="omron">Omron FINS/UDP</option><option value="mitsubishi">Mitsubishi MC protocol 3E</option><option value="ge">GE SRTP (mock only)</option></select></label>
@@ -68,10 +68,10 @@
 <label>Slot / Unit ID<input id="lslot" type="number" min="0" max="247" placeholder="1"></label>
 <label>Poll interval (ms)<input id="lint" type="number" min="250" max="60000" value="1000"></label>
 <label>32-bit word order (Modbus)<select id="lswap"><option value="">Normal</option><option value="1">Swapped</option></select></label></div>
-<div class="bar"><button class="pri" id="lgo">Connect &amp; Read</button><button id="lstop">Disconnect</button></div>
+<div class="bar"><button class="pri" id="lgo">Connect &amp; Read</button><button id="lstop">Disconnect all</button></div>
 <div id="lstat" class="hint" role="status">Not connected.</div>
 <div class="sc"><div id="lval" class="big">--</div><small id="lmeta" class="hint">No data yet</small></div>
-<div id="llog" class="hint"></div>
+<div id="lfeeds"></div>
 </section>
 </main><div id="tst" role="status" aria-live="polite"></div>
 <div id="tour" hidden><div id="tshade"></div><div id="tspot"></div>
